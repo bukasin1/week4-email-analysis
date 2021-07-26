@@ -73,7 +73,10 @@ async function analyseFiles(inputPaths: string[], outputPath: string) {
   const validEmails = data
     .split('\n')
     .filter((email: string) => email.match(emailRegex));
-  const validDomains: any = {};
+  interface domain {
+    [key: string]: number;
+  }
+  const validDomains: domain = {};
   for (const email of validEmails) {
     const domain = email.split('@')[1];
     if (validDomains[domain]) {
