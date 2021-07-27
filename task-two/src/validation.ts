@@ -2,7 +2,7 @@ import fs from 'fs';
 import dns from 'dns';
 import { exec, ExecException } from 'child_process';
 import validator from 'email-validator';
-import { validate } from 'email-domain-validator';
+// import { validate } from 'email-domain-validator';
 import * as dev from 'deep-email-validator';
 
 /**
@@ -77,7 +77,12 @@ async function validateEmailAddresses(inputPath: string[], outputFile: string) {
   console.log(`${validDomains.length} valid domains`);
   //Group all requests to the dns to verify domain names as a promise
   const domainsPromises = validDomains.map((domain) => {
-    return validate(`info@${domain}`);
+    // return validate(`info@${domain}`);
+    return new Promise((resolve, reject) => {
+      dns.resolveMx(`${domain}`, (err, add) => {
+        resolve(add);
+      });
+    });
   });
   console.log(domainsPromises);
   interface domainPromise {
@@ -96,7 +101,9 @@ async function validateEmailAddresses(inputPath: string[], outputFile: string) {
   }
   const domainsStatus: statusObj = {};
   validDomains.map((domain, index) => {
-    domainsStatus[domain] = resolvePromise[index].isValidDomain;
+    // domainsStatus[domain] = resolvePromise[index].isValidDomain;
+    if (resolvePromise[index]) domainsStatus[domain] = true;
+    else domainsStatus[domain] = false;
   });
   console.log(domainsStatus);
   const validEmails = [];
@@ -106,7 +113,7 @@ async function validateEmailAddresses(inputPath: string[], outputFile: string) {
     }
   }
   validEmails.unshift('Emails');
-  console.log(validEmails);
+  console.log(`${validEmails.length - 1} valid emails found`);
   fs.writeFileSync(outputFile, validEmails.join('\n'));
   console.log('done');
 }
