@@ -4,7 +4,6 @@ import { exec, ExecException } from 'child_process';
 import validator from 'email-validator';
 import { validate } from 'email-domain-validator';
 import * as dev from 'deep-email-validator';
-import console from 'console';
 
 /**
  * Stretch goal - Validate all the emails in this files and output the report
