@@ -17,8 +17,12 @@
     "email-analysis": "./bin/email-analysis"
   },
   "dependencies": {
+    "@types/cli-progress": "3.9.2",
     "chalk": "4.1.0",
+    "cli-progress": "3.9.0",
     "commander": "6.0.0",
+    "csvtojson": "2.0.10",
+    "deep-email-validator": "0.1.18",
     "email-addresses": "3.1.0",
     "email-domain-validator": "2.0.1",
     "email-validator": "2.0.4",

@@ -8,6 +8,7 @@
 // const fs = require('fs')
 import fs from 'fs';
 import { exec } from 'child_process';
+import validator, { validate } from 'email-validator';
 // import email_validator from 'email-validator';
 // import { validate } from 'email-domain-validator';
 
@@ -67,15 +68,19 @@ async function analyseFiles(inputPaths: string[], outputPath: string) {
   //   })
   //   .catch((err) => console.log(err));
 
+  // console.log(validator.validate('buks@hjd.cpp'));
+
   //------READING AND WRITING SYNCHRONOUSLY------
   const data = fs.readFileSync(inputPaths[0], 'utf-8');
   const emailRegex = /\w+@\w+\.\w+/;
   const validEmails = data
     .split('\n')
-    .filter((email: string) => email.match(emailRegex));
+    .filter((email: string) => validator.validate(email));
+  // console.log(validEmails);
   interface domain {
     [key: string]: number;
   }
+  // console.log('buka@ds.fd'.match(emailRegex));
   const validDomains: domain = {};
   for (const email of validEmails) {
     const domain = email.split('@')[1];
@@ -126,6 +131,6 @@ async function analyseFiles(inputPaths: string[], outputPath: string) {
   // })
 }
 
-// analyseFiles(['fixtures/inputs/small-sample.csv'], 'test.csv');
+analyseFiles(['fixtures/inputs/small-sample.csv'], 'test.csv');
 
 export default analyseFiles;
