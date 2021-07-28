@@ -8,136 +8,55 @@
 // const fs = require('fs')
 import fs from 'fs';
 import { exec } from 'child_process';
-import validator, { validate } from 'email-validator';
-// import email_validator from 'email-validator';
-// import { validate } from 'email-domain-validator';
+import validator from 'email-validator';
 
 // console.log(await validate('bukasin@gmail.com'));
 
 async function analyseFiles(inputPaths: string[], outputPath: string) {
-  // console.log('Complete the implementation in src/analysis.ts');
-
-  //Create a read file promise.
-  // const readFile = new Promise((resolve, reject) => {
-  //   fs.readFile(inputPaths[0], 'utf-8', (err, data) => {
-  //     if (err) reject(err);
-  //     resolve(data);
-  //   });
-  // });
-  // readFile
-  //   .then(async (data: any) => {
-  //     const execPro: string = await new Promise((resolve, reject) => {
-  //       exec('dig MX decagon.com.ng +short +all', (err, stdout, stderr) => {
-  //         if (err) reject(err);
-  //         resolve(stdout);
-  //       });
-  //     });
-  //     //Regex pattern to check for a validly formed email.
-  //     // const testRegex = /^[A-Za-z]\w+@\w+\.\w+/;
-  //     const emailRegex = /\w+@\w+\.\w+/;
-  //     // console.log(emailRegex.test('b+uk@gh.com'));
-  //     // console.log('hhhdj'.match(emailRegex));
-  //     const validEmails = data
-  //       .split('\n')
-  //       .filter((email: string) => email.match(emailRegex));
-  //     const validDomains: any = {};
-  //     for (const email of validEmails) {
-  //       const domain = email.split('@')[1];
-  //       if (validDomains[domain]) {
-  //         validDomains[domain] += 1;
-  //       } else {
-  //         validDomains[domain] = 1;
-  //       }
-  //     }
-  //     const outPutData = {
-  //       'valid-domains': Object.keys(validDomains),
-  //       totalEmailsParsed: data.trim().split('\n').slice(1).length,
-  //       totalValidEmails: validEmails.length,
-  //       categories: validDomains,
-  //     };
-  //     fs.writeFile(
-  //       outputPath,
-  //       JSON.stringify(outPutData, null, 4),
-  //       'utf-8',
-  //       (err) => {
-  //         if (err) {
-  //           console.log('error occurred');
-  //         }
-  //       },
-  //     );
-  //   })
-  //   .catch((err) => console.log(err));
-
-  // console.log(validator.validate('buks@hjd.cpp'));
-
   //------READING AND WRITING SYNCHRONOUSLY------
   // const data = fs.readFileSync(inputPaths[0], 'utf-8');
+  const inputStream = fs.createReadStream(inputPaths[0], 'utf8');
+  const outputStream = fs.createWriteStream(outputPath);
   let data = '';
   const stream = fs.createReadStream(inputPaths[0]);
   for await (const chunk of stream as fs.ReadStream) {
     data += chunk;
   }
-  const emailRegex = /\w+@\w+\.\w+/;
-  const validEmails = data
-    .split('\n')
-    .filter((email: string) => validator.validate(email));
-  // console.log(validEmails);
   interface domain {
     [key: string]: number;
   }
   // console.log('buka@ds.fd'.match(emailRegex));
   const validDomains: domain = {};
-  for (const email of validEmails) {
-    const domain = email.split('@')[1];
-    if (validDomains[domain]) {
-      validDomains[domain] += 1;
-    } else {
-      validDomains[domain] = 1;
+  let validEmails = 0;
+  inputStream.on('data', (data) => {
+    const emailRegex = /\w+@\w+\.\w+/;
+    const validChunkEmails = data
+      .split('\n')
+      .filter((email: string) => validator.validate(email));
+    // console.log(validEmails);
+    for (const email of validChunkEmails) {
+      const domain = email.split('@')[1];
+      if (validDomains[domain]) {
+        validDomains[domain] += 1;
+      } else {
+        validDomains[domain] = 1;
+      }
     }
-  }
-  const outPutData = {
-    'valid-domains': Object.keys(validDomains),
-    totalEmailsParsed: data.trim().split('\n').slice(1).length,
-    totalValidEmails: validEmails.length,
-    categories: validDomains,
-  };
-  fs.writeFileSync(outputPath, JSON.stringify(outPutData, null, 4));
-  const writeFile = fs.createWriteStream(outputPath);
-  writeFile.write(JSON.stringify(outPutData, null, 4));
+    validEmails += validChunkEmails.length;
+  });
 
-  // ----------CALL BACK HELL APPROACH.-----------
-  // fs.readFile(inputPaths[0], 'utf-8', (err, data) => {
-  //   if(err){
-  //     console.log(err)
-  //   }
-  //   if(data){
-  //     let emailRegex = /^[A-Za-z]\w+@\w+\.\w+/
-  //     let validEmails = data.split('\n').filter(email => email.match(emailRegex))
-  //     let validDomains:any = {}
-  //     for(let email of validEmails){
-  //       let domain = email.split('@')[1]
-  //       if(validDomains[domain]){
-  //         validDomains[domain] += 1
-  //       }else{
-  //         validDomains[domain] = 1
-  //       }
-  //     }
-  //     validDomains
-  //     let outPutData = {
-  //       "valid-domains": Object.keys(validDomains),
-  //       "totalEmailsParsed": data.trim().split('\n').slice(1).length,
-  //       "totalValidEmails": validEmails.length,
-  //       "categories": validDomains
-  //     }
-  //     fs.writeFile(outputPath, JSON.stringify(outPutData, null, 4), 'utf-8', (err) => {
-  //       if(err){
-  //         console.log('error occurred')
-  //       }
-  //     })
-  //   }
-  // })
+  inputStream.on('close', () => {
+    const outPutData = {
+      'valid-domains': Object.keys(validDomains),
+      totalEmailsParsed: data.trim().split('\n').slice(1).length,
+      totalValidEmails: validEmails,
+      categories: validDomains,
+    };
+    // fs.writeFileSync(outputPath, JSON.stringify(outPutData, null, 4));
+    outputStream.write(JSON.stringify(outPutData, null, 4));
+  });
 }
 
-analyseFiles(['fixtures/inputs/small-sample.csv'], 'test.csv');
+// analyseFiles(['fixtures/inputs/small-sample.csv'], 'test.csv');
 
 export default analyseFiles;
