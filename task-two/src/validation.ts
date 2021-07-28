@@ -119,7 +119,9 @@ async function validateEmailAddresses(inputPath: string[], outputFile: string) {
   }
   validEmails.unshift('Emails');
   console.log(`${validEmails.length - 1} valid emails found`);
-  fs.writeFileSync(outputFile, validEmails.join('\n'));
+  // fs.writeFileSync(outputFile, validEmails.join('\n'));
+  const writeFile = fs.createWriteStream(outputFile);
+  writeFile.write(validEmails.join('\n'));
   console.log('done');
 }
 

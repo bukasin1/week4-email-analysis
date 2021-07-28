@@ -102,6 +102,8 @@ async function analyseFiles(inputPaths: string[], outputPath: string) {
     categories: validDomains,
   };
   fs.writeFileSync(outputPath, JSON.stringify(outPutData, null, 4));
+  const writeFile = fs.createWriteStream(outputPath);
+  writeFile.write(JSON.stringify(outPutData, null, 4));
 
   // ----------CALL BACK HELL APPROACH.-----------
   // fs.readFile(inputPaths[0], 'utf-8', (err, data) => {
