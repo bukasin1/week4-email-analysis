@@ -4,6 +4,8 @@ import { exec, ExecException } from 'child_process';
 import validator from 'email-validator';
 import { validate } from 'email-domain-validator';
 import * as dev from 'deep-email-validator';
+// eslint-disable-next-line node/no-unsupported-features/node-builtins
+import { promises as dns1 } from 'dns';
 
 /**
  * Stretch goal - Validate all the emails in this files and output the report
@@ -12,117 +14,76 @@ import * as dev from 'deep-email-validator';
  * @param {string} outputFile The path where to output the report
  */
 
-// async function validateEmailAddresses(inputPath: string[], outputFile: string) {
-//   //------READING AND WRITING SYNCHRONOUSLY------
-//   const data = fs.readFileSync(inputPath[0], 'utf-8');
-
-//   let strOutSync = 'Emails \n';
-//   const execPromiseArray: Promise<string>[] = [];
-//   try {
-//     console.log('copying...');
-//     let i = 0;
-//     for (const email of data.split('\n')) {
-//       const execPromise: string | ExecException = await new Promise(
-//         (resolve, reject) => {
-//           exec(
-//             `dig MX ${email.split('@')[1]} +short +all`,
-//             (err, stdout, stderr) => {
-//               if (err) resolve(err);
-//               resolve(stdout);
-//             },
-//           );
-//         },
-//       );
-//       i++;
-//       // console.log(execPromise);
-//       if (typeof execPromise === 'string') {
-//         if (execPromise.length > 0) {
-//           strOutSync += email;
-//           strOutSync += '\n';
-//         }
-//       }
-//       fs.writeFileSync(outputFile, strOutSync);
-//       // execPromiseArray.push(execPromise);
-//     }
-//     // const execStatus: Array<string> = await Promise.all(execPromiseArray);
-//     // let j = 0;
-//     // for (const email of data.split('\n')) {
-//     //   if (execStatus[j].length > 0) {
-//     //     strOutSync += email;
-//     //     strOutSync += '\n';
-//     //   }
-//     //   j++;
-//     // }
-//   } catch (err) {
-//     console.log(err);
-//   }
-//   // fs.writeFileSync(outputFile, strOutSync);
-//   console.log('Completed');
-// }
-
 async function validateEmailAddresses(inputPath: string[], outputFile: string) {
-  //
   // const data = fs.readFileSync(inputPath[0], 'utf-8');
-  let data = '';
-  const stream = fs.createReadStream(inputPath[0]);
-  for await (const chunk of stream as fs.ReadStream) {
-    data += chunk;
-  }
-  const emails = data.trim().split('\n').slice(1);
-  console.log(`${emails.length} emails taken in to be validated`);
-  //Pick out the unique domains
-  const uniqueDomains = [
-    ...new Set(emails.map((email) => email.split('@')[1])),
-  ];
-  console.log(`${uniqueDomains.length} unique domain names`);
-  //Filter out domains that are invalidly formed
-  const validDomains = uniqueDomains.filter((dom) =>
-    validator.validate(`info@${dom}`),
-  );
-  console.log(`${validDomains.length} valid domains`);
-  //Group all requests to the dns to verify domain names as a promise
-  const domainsPromises = validDomains.map((domain) => {
-    // return validate(`info@${domain}`);
-    return new Promise((resolve, reject) => {
-      dns.resolveMx(`${domain}`, (err, add) => {
-        resolve(add);
-      });
-    });
-  });
-  console.log(domainsPromises);
-  interface domainPromise {
-    isValidDomain: boolean;
-    erorrMessage: Array<string>;
-    invalidEmailList: Array<string>;
-  }
-  console.log('Validating domains...');
-  //Resolve all requests at once
-  const resolvePromise: Array<domainPromise> = (await Promise.all(
-    domainsPromises,
-  )) as Array<domainPromise>;
-  console.log(resolvePromise);
+  const inputStream = fs.createReadStream(inputPath[0], 'utf8');
+  const outputStream = fs.createWriteStream(outputFile);
   interface statusObj {
     [key: string]: boolean;
   }
   const domainsStatus: statusObj = {};
-  validDomains.map((domain, index) => {
-    // domainsStatus[domain] = resolvePromise[index].isValidDomain;
-    if (resolvePromise[index]) domainsStatus[domain] = true;
-    else domainsStatus[domain] = false;
-  });
-  console.log(domainsStatus);
   const validEmails = [];
-  for (const email of emails) {
-    if (domainsStatus[email.split('@')[1]]) {
-      validEmails.push(email);
+  outputStream.write('Email \n');
+  inputStream.on('data', async (data) => {
+    const emails = data.trim().split('\n') as Array<string>;
+    console.log(`${emails.length} emails taken in to be validated`);
+    try {
+      let i = 0;
+      for (const email of emails) {
+        if (validator.validate(email)) {
+          const domainName = email.split('@')[1];
+          if (
+            domainsStatus[domainName] ||
+            domainsStatus[domainName] === false
+          ) {
+            // console.log('email is valid');
+            validEmails.push(email);
+            if (domainsStatus[domainName]) outputStream.write(email + '\n');
+            console.log(`${validEmails.length} validEmails found`);
+            continue;
+          }
+          // const execPromise: string | ExecException = await new Promise(
+          //   (resolve, reject) => {
+          //     exec(
+          //       `dig MX ${domainName} +short +all`,
+          //       (err, stdout, stderr) => {
+          //         if (err) resolve(err);
+          //         resolve(stdout);
+          //       },
+          //     );
+          //   },
+          // );
+          // // console.log(execPromise);
+          // if (typeof execPromise === 'string') {
+          //   if (execPromise.length > 0) {
+          //     outputStream.write(email + '\n');
+          //     domainsStatus[domainName] = true;
+          //   }
+          // }
+          const resolveObj = await dns1
+            .resolveMx(domainName)
+            .then((data) => {
+              return true;
+            })
+            .catch((err) => {
+              if (err.code === 'ENODATA') return false;
+            });
+          if (resolveObj) {
+            outputStream.write(email + '\n');
+            validEmails.push(email);
+            domainsStatus[domainName] = resolveObj;
+          }
+          if (resolveObj === false) domainsStatus[domainName] = resolveObj;
+          i++;
+        }
+      }
+    } catch (err) {
+      console.log(err);
     }
-  }
-  validEmails.unshift('Emails');
-  console.log(`${validEmails.length - 1} valid emails found`);
-  // fs.writeFileSync(outputFile, validEmails.join('\n'));
-  const writeFile = fs.createWriteStream(outputFile);
-  writeFile.write(validEmails.join('\n'));
-  console.log('done');
+  });
+  inputStream.on('close', () => {
+    console.log('Completed');
+  });
 }
 
 // validateEmailAddresses(['fixtures/inputs/small-sample.csv'], 'test.csv');
