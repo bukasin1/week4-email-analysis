@@ -71,7 +71,12 @@ async function analyseFiles(inputPaths: string[], outputPath: string) {
   // console.log(validator.validate('buks@hjd.cpp'));
 
   //------READING AND WRITING SYNCHRONOUSLY------
-  const data = fs.readFileSync(inputPaths[0], 'utf-8');
+  // const data = fs.readFileSync(inputPaths[0], 'utf-8');
+  let data = '';
+  const stream = fs.createReadStream(inputPaths[0]);
+  for await (const chunk of stream as fs.ReadStream) {
+    data += chunk;
+  }
   const emailRegex = /\w+@\w+\.\w+/;
   const validEmails = data
     .split('\n')

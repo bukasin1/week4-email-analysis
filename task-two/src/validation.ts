@@ -2,7 +2,7 @@ import fs from 'fs';
 import dns from 'dns';
 import { exec, ExecException } from 'child_process';
 import validator from 'email-validator';
-// import { validate } from 'email-domain-validator';
+import { validate } from 'email-domain-validator';
 import * as dev from 'deep-email-validator';
 
 /**
@@ -62,7 +62,12 @@ import * as dev from 'deep-email-validator';
 
 async function validateEmailAddresses(inputPath: string[], outputFile: string) {
   //
-  const data = fs.readFileSync(inputPath[0], 'utf-8');
+  // const data = fs.readFileSync(inputPath[0], 'utf-8');
+  let data = '';
+  const stream = fs.createReadStream(inputPath[0]);
+  for await (const chunk of stream as fs.ReadStream) {
+    data += chunk;
+  }
   const emails = data.trim().split('\n').slice(1);
   console.log(`${emails.length} emails taken in to be validated`);
   //Pick out the unique domains
